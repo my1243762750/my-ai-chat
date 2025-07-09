@@ -1,0 +1,1 @@
+import{c as t}from"./ZD4W36SK.js";import{j as o}from"./AUJ76673.js";var c=r=>{let e=o(t);return r||(e==="auto"?window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light":e==="dark"?"dark":"light")};export{c as a};

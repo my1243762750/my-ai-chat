@@ -1,0 +1,1 @@
+import{a as r}from"./Q25QR6DL.js";import{a as t}from"./UAWD6KOW.js";var n=["feedback","funnel_survey__survey_cancel_completed"];var s=new r({runtime:"client"}),R=async(e=!1,o=[...n])=>(await s.postMessage({event:"Client_updateMaxAISurveyStatus",data:{surveyKeys:o,forceUpdate:e}})).data||{},P=async()=>(await t.getLocalSettings())?.surveyStatus??null;export{R as a,P as b};
