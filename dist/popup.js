@@ -1,0 +1,1 @@
+document.getElementById("toggleChat").addEventListener("click", () => { console.log("popup: toggleChat button clicked"); chrome.runtime.sendMessage({ action: "toggleSidebar" }, (resp) => { console.log("popup: got response", resp); }); }); document.getElementById("settings").addEventListener("click", () => { alert("请在侧边栏内设置API Key"); });

@@ -36,12 +36,6 @@
   <button class="button" id="toggleChat">Toggle Chat Sidebar</button>
   <button class="button" id="settings">Settings</button>
   
-  <script>
-    document.getElementById('toggleChat').addEventListener('click', () => {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        chrome.tabs.sendMessage(tabs[0].id, { action: 'toggleSidebar' })
-      })
-    })
-  </script>
+  <script src="popup.js"></script>
 </body>
 </html> 
