@@ -17,7 +17,7 @@ function createSidebar() {
   sidebar.style.cssText = `
     position: fixed;
     top: 0;
-    right: 0;
+    right: -400px;
     width: 400px;
     height: 100vh;
     z-index: 2147483647;
@@ -25,6 +25,8 @@ function createSidebar() {
     border-left: 1px solid #e0e0e0;
     box-shadow: -2px 0 10px rgba(0,0,0,0.1);
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translateX(0);
   `
   
   // 调整页面布局
@@ -56,6 +58,12 @@ function createSidebar() {
   document.body.appendChild(sidebar)
   const root = createRoot(sidebar)
   root.render(React.createElement(ChatSidebar))
+  
+  // 触发动画 - 从右侧滑入
+  requestAnimationFrame(() => {
+    sidebar.style.right = '0'
+  })
+  
   console.log('AI Chat sidebar created');
 }
 
@@ -110,25 +118,31 @@ function findMainContainer() {
 function removeSidebar() {
   const sidebar = document.getElementById('ai-chat-sidebar')
   if (sidebar) {
-    // 恢复主容器样式
-    if (sidebar._originalContainerStyles) {
-      const mainContainer = findMainContainer()
-      if (mainContainer) {
-        mainContainer.style.width = sidebar._originalContainerStyles.width || ''
-        mainContainer.style.maxWidth = sidebar._originalContainerStyles.maxWidth || ''
-        mainContainer.style.marginRight = sidebar._originalContainerStyles.marginRight || ''
-        mainContainer.style.transition = sidebar._originalContainerStyles.transition || ''
-        console.log('AI Chat: restored main container styles')
-      }
-    } else if (sidebar._originalBodyMarginRight !== undefined) {
-      // 恢复 body margin
-      const body = document.body
-      body.style.marginRight = sidebar._originalBodyMarginRight || '0'
-      console.log('AI Chat: restored body margin')
-    }
+    // 触发关闭动画 - 滑出到右侧
+    sidebar.style.right = '-400px'
     
-    sidebar.remove()
-    console.log('AI Chat sidebar removed');
+    // 等待动画完成后移除元素
+    setTimeout(() => {
+      // 恢复主容器样式
+      if (sidebar._originalContainerStyles) {
+        const mainContainer = findMainContainer()
+        if (mainContainer) {
+          mainContainer.style.width = sidebar._originalContainerStyles.width || ''
+          mainContainer.style.maxWidth = sidebar._originalContainerStyles.maxWidth || ''
+          mainContainer.style.marginRight = sidebar._originalContainerStyles.marginRight || ''
+          mainContainer.style.transition = sidebar._originalContainerStyles.transition || ''
+          console.log('AI Chat: restored main container styles')
+        }
+      } else if (sidebar._originalBodyMarginRight !== undefined) {
+        // 恢复 body margin
+        const body = document.body
+        body.style.marginRight = sidebar._originalBodyMarginRight || '0'
+        console.log('AI Chat: restored body margin')
+      }
+      
+      sidebar.remove()
+      console.log('AI Chat sidebar removed');
+    }, 300) // 等待动画完成
   }
 }
 function toggleSidebar() {
