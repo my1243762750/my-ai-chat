@@ -6,6 +6,7 @@ const ChatSidebar = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [apiKey, setApiKey] = useState('')
   const [model, setModel] = useState('doubao-seed-1-6-flash-250615')
+  const [useCurrent, setUseCurrent] = useState(false)
   const messagesEndRef = useRef(null)
 
   // 自动滚动到底部
@@ -61,21 +62,59 @@ const ChatSidebar = () => {
     });
   }
 
+  // 获取当前网页正文内容（通过content script）
+  const getPageContent = () => {
+    return new Promise((resolve) => {
+      try {
+        // 直接在content script里抓取正文
+        let text = ''
+        // 优先 main/role=main/常见容器
+        const selectors = [
+          'main', '[role="main"]', '.main', '#main', '.content', '#content', '.container', '#container', '.wrapper', '#wrapper', '.page-content', '#page-content', '.app', '#app', '.root', '#root'
+        ]
+        for (const sel of selectors) {
+          const el = document.querySelector(sel)
+          if (el && el.innerText && el.innerText.length > 100) {
+            text = el.innerText
+            break
+          }
+        }
+        // fallback: body最大子元素
+        if (!text) {
+          let largest = null, maxArea = 0
+          Array.from(document.body.children).forEach(child => {
+            const area = child.offsetWidth * child.offsetHeight
+            if (area > maxArea && child.innerText && child.innerText.length > 100) {
+              largest = child; maxArea = area
+            }
+          })
+          if (largest) text = largest.innerText
+        }
+        // fallback: 整个body
+        if (!text) text = document.body.innerText
+        // 截断过长内容
+        if (text.length > 3000) text = text.slice(0, 3000) + '\n...(内容已截断)'
+        resolve(text)
+      } catch (e) {
+        resolve('')
+      }
+    })
+  }
+
   // 发送消息
   const sendMessage = async () => {
     if (!inputValue.trim() || isLoading) return
-
+    setIsLoading(true)
     const userMessage = inputValue.trim()
     setInputValue('')
-    setIsLoading(true)
-
-    // 添加用户消息
     setMessages(prev => [...prev, { type: 'user', content: userMessage }])
-
     try {
-      const response = await callDoubaoAPI(userMessage)
-      
-      // 添加AI回复
+      let finalPrompt = userMessage
+      if (useCurrent) {
+        const pageContent = await getPageContent()
+        finalPrompt = `这是当前网页的内容：\n${pageContent}\n用户问题：${userMessage}\n请基于网页内容回答。`
+      }
+      const response = await callDoubaoAPI(finalPrompt)
       setMessages(prev => [...prev, { type: 'assistant', content: response }])
     } catch (error) {
       console.error('Error calling API:', error)
@@ -345,6 +384,12 @@ const ChatSidebar = () => {
       </div>
 
       <div style={styles.chatInputContainer}>
+        <div style={{display: 'flex', alignItems: 'center', marginBottom: 6}}>
+          <label style={{display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: 14, color: '#007bff', userSelect: 'none'}}>
+            <input type="checkbox" checked={useCurrent} onChange={e => setUseCurrent(e.target.checked)} style={{marginRight: 6}} />
+            Current（让AI访问当前网页内容）
+          </label>
+        </div>
         <div style={styles.inputWrapper}>
           <textarea
             value={inputValue}
