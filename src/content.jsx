@@ -35,6 +35,7 @@ function createSidebar() {
   style.textContent = chatSidebarCss
   shadow.appendChild(style)
   const mount = document.createElement('div')
+  mount.className = 'ai-chat-sidebar-root'
   shadow.appendChild(mount)
 
   // 调整页面布局（同原逻辑）
