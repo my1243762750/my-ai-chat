@@ -146,13 +146,13 @@
 }
 textarea {
   flex: 1;
-  min-height: 38px;
-  max-height: 90px;
+  min-height: 54px;
+  max-height: 120px;
   resize: none;
   border: 1.5px solid #d0d0d0;
   border-radius: 8px;
-  padding: 10px 12px;
-  font-size: 15px;
+  padding: 16px 14px;
+  font-size: 16px;
   background: #f7f7fa;
   color: #222;
   outline: none;
@@ -194,4 +194,45 @@ textarea:focus {
 }
 .settings-btn:hover {
   background: #e0eaff;
+} 
+
+/* 发送按钮去掉彩色背景，改为透明 */
+.send-btn-icon {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: none;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+  padding: 0;
+  z-index: 2;
+}
+.send-btn-icon:disabled {
+  background: transparent;
+  cursor: not-allowed;
+}
+.send-btn-icon:hover:not(:disabled) {
+  background: transparent;
+  transform: none;
+}
+.send-btn-icon:active:not(:disabled) {
+  transform: scale(0.96);
+}
+.send-icon-img {
+  color: #888;
+  transition: color 0.2s;
+}
+.send-btn-icon:not(:disabled) .send-icon-img {
+  color: #22c55e;
+}
+.send-btn-icon:disabled .send-icon-img {
+  color: #888;
 } 
