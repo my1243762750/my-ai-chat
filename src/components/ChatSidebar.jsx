@@ -105,12 +105,7 @@ const ChatSidebar = () => {
       <div className="chat-header">
         <h3>AI Chat</h3>
         <button className="close-btn" onClick={() => {
-          const sidebar = document.getElementById('ai-chat-sidebar')
-          if (sidebar) {
-            const body = document.body
-            body.style.marginRight = sidebar._originalMarginRight || '0'
-            sidebar.remove()
-          }
+          if (window.removeSidebar) window.removeSidebar();
         }}>
           ×
         </button>

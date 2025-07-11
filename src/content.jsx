@@ -119,10 +119,7 @@ function findMainContainer() {
 function removeSidebar() {
   const sidebar = document.getElementById('ai-chat-sidebar')
   if (sidebar) {
-    // 触发关闭动画 - 滑出到右侧
     sidebar.style.right = '-400px'
-
-    // 等待动画完成后移除元素
     setTimeout(() => {
       // 恢复主容器样式
       if (sidebar._originalContainerStyles) {
@@ -132,18 +129,13 @@ function removeSidebar() {
           mainContainer.style.maxWidth = sidebar._originalContainerStyles.maxWidth || ''
           mainContainer.style.marginRight = sidebar._originalContainerStyles.marginRight || ''
           mainContainer.style.transition = sidebar._originalContainerStyles.transition || ''
-          console.log('AI Chat: restored main container styles')
         }
       } else if (sidebar._originalBodyMarginRight !== undefined) {
-        // 恢复 body margin
         const body = document.body
         body.style.marginRight = sidebar._originalBodyMarginRight || '0'
-        console.log('AI Chat: restored body margin')
       }
-
       sidebar.remove()
-      console.log('AI Chat sidebar removed');
-    }, 300) // 等待动画完成
+    }, 300)
   }
 }
 function toggleSidebar() {
@@ -160,4 +152,5 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     toggleSidebar()
     sendResponse({ success: true })
   }
-}) 
+})
+window.removeSidebar = removeSidebar 
