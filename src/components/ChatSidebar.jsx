@@ -128,7 +128,7 @@ const ChatSidebar = () => {
     },
     messageContent: {
       maxWidth: '90%',
-      padding: '12px 16px',
+      padding: '8px 12px',
       borderRadius: '16px',
       fontSize: UNIFIED_FONT_SIZE,
       lineHeight: 1.7,
@@ -141,11 +141,11 @@ const ChatSidebar = () => {
       borderBottomRightRadius: '16px'
     },
     messageContentUser: {
-      background: 'linear-gradient(90deg, #007bff 60%, #4f8cff 100%)',
+      background: 'linear-gradient(90deg, #6366f1 60%, #a5b4fc 100%)',
       color: '#fff',
       borderBottomRightRadius: '4px',
       borderBottomLeftRadius: '16px',
-      boxShadow: '0 2px 8px rgba(0,123,255,0.08)'
+      boxShadow: '0 2px 8px rgba(99,102,241,0.08)'
     },
     messageContentAssistant: {
       background: '#f1f3f7',
