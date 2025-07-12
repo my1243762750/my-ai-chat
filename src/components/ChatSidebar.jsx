@@ -1,4 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react'
+import hljs from 'highlight.js/lib/core';
+import javascript from 'highlight.js/lib/languages/javascript';
+hljs.registerLanguage('javascript', javascript);
+// import 'highlight.js/styles/github-dark.css'; // 建议用CDN方式全局引入
+import ReactMarkdown from 'react-markdown';
 
 const modelOptions = [
   {
@@ -365,7 +370,120 @@ const ChatSidebar = () => {
     }
   }
 
-  const [messages, setMessages] = useState([])
+  // 移除 codeStyles 相关 code-block 样式，只保留结构
+  const CodeBlock = ({ language, value, onCopy }) => {
+    const [copied, setCopied] = useState(false);
+    // 语言别名兼容，强制 js 用 javascript
+    const langMap = { js: 'javascript', javascript: 'javascript' };
+    const lang = langMap[(language || '').toLowerCase()] || 'javascript';
+
+    const handleCopy = async () => {
+      try {
+        await navigator.clipboard.writeText(value);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        onCopy && onCopy();
+      } catch (err) {
+        console.error('复制失败:', err);
+      }
+    };
+
+    // 去除首尾多余空行和缩进
+    const cleanValue = value.replace(/^\s+|\s+$/g, '');
+    // 用 highlight.js 得到高亮 HTML
+    let highlighted = '';
+    try {
+      highlighted = hljs.highlight(cleanValue, { language: lang }).value;
+    } catch (e) {
+      highlighted = cleanValue;
+    }
+
+    return (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#23272e', padding: '8px 16px', borderTopLeftRadius: 12, borderTopRightRadius: 12 }}>
+          <span style={{ color: '#b4befe', fontWeight: 600, fontSize: 14 }}>{lang}</span>
+          <button 
+            style={{ border: 'none', background: 'none', color: '#b4befe', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+            onClick={handleCopy}
+          >
+            {copied ? '已复制' : '复制'}
+          </button>
+        </div>
+        <pre style={{ margin: 0, borderBottomLeftRadius: 12, borderBottomRightRadius: 12, overflow: 'auto' }}>
+          <code
+            className={`hljs language-${lang}`}
+            dangerouslySetInnerHTML={{ __html: highlighted }}
+          />
+        </pre>
+      </div>
+    );
+  };
+
+  // 用 react-markdown 渲染消息
+  const renderMessage = (message) => {
+    return (
+      <ReactMarkdown
+        children={message.content}
+        components={{
+          code({node, inline, className, children, ...props}) {
+            let match = /language-(\w+)/.exec(className || '');
+            // 强制 js 用 javascript
+            if (match && match[1] && match[1].toLowerCase() === 'js') match[1] = 'javascript';
+            // 代码块
+            if (!inline) {
+              return (
+                <CodeBlock
+                  language={match ? match[1] : ''}
+                  value={String(children)}
+                  onCopy={() => console.log('代码已复制')}
+                />
+              );
+            }
+            // 行内代码：只加粗/变色，不用灰色背景
+            return <code style={{fontWeight: 600, color: '#e8791f', fontFamily: 'Menlo, Monaco, Consolas, monospace', background: 'none', fontSize: 14}}>{children}</code>;
+          },
+          p({children}) {
+            // 普通段落
+            return <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: '6px 0' }}>{children}</div>;
+          }
+        }}
+      />
+    );
+  };
+
+  // 默认调试消息
+  const defaultDebugMessage = {
+    type: 'assistant',
+    content:
+      '### JavaScript 解法代码\n\n' +
+      '~~~javascript\n' +
+      '/**\n' +
+      ' * @param {string[]} strs\n' +
+      ' * @return {string[][]}\n' +
+      ' */\n' +
+      'var groupAnagrams = function(strs) {\n' +
+      '    const map = new Map();\n' +
+      '    for (const str of strs) {\n' +
+      '        // 将字符串拆分成字符数组、排序后再拼接成新字符串作为键\n' +
+      '        const key = str.split(\'\').sort().join(\'\');\n' +
+      '        if (map.has(key)) {\n' +
+      '            map.get(key).push(str);\n' +
+      '        } else {\n' +
+      '            map.set(key, [str]);\n' +
+      '        }\n' +
+      '    }\n' +
+      '    // 返回所有分组的结果\n' +
+      '    return Array.from(map.values());\n' +
+      '};\n' +
+      '~~~\n\n' +
+      '### 代码解释\n' +
+      '1. **创建哈希表**：使用 `Map` 对象来存储字母异位词的分组结果，其中键是排序后的字符串（因为字母异位词排序后字符串相同），值是该分组对应的原字符串数组。\n' +
+      '2. **遍历输入数组**：遍历每个字符串，将其拆分为字符数组、排序后再拼接成新字符串作为键。\n' +
+      '3. **分组处理**：根据排序后的键，将原字符串放入对应的分组中。如果键已存在于 `Map` 中，就将原字符串添加到该键对应的数组中；如果键不存在，就创建一个新的数组并将原字符串放入。\n' +
+      '4. **返回结果**：将 `Map` 中所有值转为数组返回，即为字母异位词分组后的结果。'
+  };
+
+  const [messages, setMessages] = useState([defaultDebugMessage]);
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [apiKey, setApiKey] = useState('')
@@ -447,21 +565,23 @@ const ChatSidebar = () => {
     if (!model) {
       throw new Error('Please set your model name')
     }
+    const params = {
+      apiKey: apiKey,
+      model: model,
+      message: message
+    };
+    console.log('[AIChat] 请求参数:', params);
     return new Promise((resolve, reject) => {
       chrome.runtime.sendMessage({
         action: 'callDoubaoAPI',
-        data: {
-          apiKey: apiKey,
-          model: model,
-          message: message
-        }
+        data: params
       }, (response) => {
         if (chrome.runtime.lastError) {
           console.error('Error sending message to background:', chrome.runtime.lastError);
           reject(new Error('Failed to communicate with background script'));
           return;
         }
-        
+        console.log('[AIChat] 返回结果:', response);
         if (response && response.success) {
           resolve(response.content);
         } else {
@@ -601,7 +721,7 @@ const ChatSidebar = () => {
         {messages.map((message, index) => (
           <div key={index} style={{...styles.message, ...(message.type === 'user' ? styles.messageUser : styles.messageAssistant)}}>
             <div style={{...styles.messageContent, ...(message.type === 'user' ? styles.messageContentUser : styles.messageContentAssistant)}}>
-              {message.content}
+              {renderMessage(message)}
             </div>
           </div>
         ))}
