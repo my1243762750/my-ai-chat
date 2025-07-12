@@ -387,10 +387,14 @@ const ChatSidebar = () => {
         <div style={{display: 'flex', alignItems: 'center', marginBottom: 6}}>
           <label style={{display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: 14, color: '#007bff', userSelect: 'none'}}>
             <input type="checkbox" checked={useCurrent} onChange={e => setUseCurrent(e.target.checked)} style={{marginRight: 6}} />
-            Current（让AI访问当前网页内容）
+            <span style={{display: 'flex', alignItems: 'center', gap: 4}}>
+              {/* 地球/网页内容图标 */}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: 3, color: '#22c55e'}} className="sidebar-icon"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              Current（让AI访问当前网页内容）
+            </span>
           </label>
         </div>
-        <div style={{...styles.inputWrapper, position: 'relative'}}> {/* 使按钮可绝对定位 */}
+        <div style={{...styles.inputWrapper, position: 'relative'}}>
           <textarea
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
@@ -431,6 +435,8 @@ const ChatSidebar = () => {
           onMouseEnter={(e) => e.target.style.background = '#e0eaff'}
           onMouseLeave={(e) => e.target.style.background = '#f1f3f7'}
         >
+          {/* 钥匙图标 */}
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: 6, verticalAlign: 'middle'}} className="sidebar-icon"><circle cx="15" cy="15" r="4"/><path d="M7.5 15H9m-1.5 0V9a6 6 0 1 1 6 6h-1.5"/></svg>
           {apiKey ? 'Change API Key' : 'Set API Key'}
         </button>
         <button 
@@ -439,6 +445,8 @@ const ChatSidebar = () => {
           onMouseEnter={(e) => e.target.style.background = '#e0eaff'}
           onMouseLeave={(e) => e.target.style.background = '#f1f3f7'}
         >
+          {/* 芯片/模型图标 */}
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: 6, verticalAlign: 'middle'}} className="sidebar-icon"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/><path d="M15 2v2M15 20v2M9 2v2M9 20v2M2 15h2M20 15h2M2 9h2M20 9h2"/></svg>
           {model ? `Model: ${model}` : 'Set Model Name'}
         </button>
       </div>
