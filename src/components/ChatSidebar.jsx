@@ -2,7 +2,24 @@ import React, { useState, useRef, useEffect } from 'react'
 import hljs from 'highlight.js/lib/core';
 import javascript from 'highlight.js/lib/languages/javascript';
 hljs.registerLanguage('javascript', javascript);
-// import 'highlight.js/styles/github-dark.css'; // 建议用CDN方式全局引入
+// 动态插入 highlight.js 主题样式，保证 content-script 作用域下高亮样式生效
+import githubDark from 'highlight.js/styles/github-dark.css?inline';
+
+function injectHighlightStyleToSidebar() {
+  const root = document.querySelector('.ai-chat-sidebar');
+  if (root && !root.querySelector('#hljs-theme')) {
+    const style = document.createElement('style');
+    style.id = 'hljs-theme';
+    style.innerHTML = githubDark;
+    root.appendChild(style);
+    return true;
+  }
+  return false;
+}
+
+if (typeof window !== 'undefined') {
+  injectHighlightStyleToSidebar();
+}
 import ReactMarkdown from 'react-markdown';
 
 const modelOptions = [
@@ -28,6 +45,7 @@ const modelOptions = [
 ]
 
 const ChatSidebar = () => {
+  const sidebarRef = useRef(null);
   // 颜色和尺寸常量
   const ICON_SIZE = 20;
   const UNIFIED_FONT_SIZE = 12;
@@ -88,7 +106,9 @@ const ChatSidebar = () => {
       background: '#f6f8fa',
       display: 'flex',
       flexDirection: 'column',
-      gap: '12px'
+      gap: '12px',
+      minHeight: 0, // 关键：允许flex容器收缩，保证滚动
+      maxHeight: '100%',
     },
     welcomeMessage: {
       color: '#888',
@@ -107,7 +127,7 @@ const ChatSidebar = () => {
       justifyContent: 'flex-start'
     },
     messageContent: {
-      maxWidth: '80%',
+      maxWidth: '90%',
       padding: '12px 16px',
       borderRadius: '16px',
       fontSize: UNIFIED_FONT_SIZE,
@@ -373,9 +393,8 @@ const ChatSidebar = () => {
   // 移除 codeStyles 相关 code-block 样式，只保留结构
   const CodeBlock = ({ language, value, onCopy }) => {
     const [copied, setCopied] = useState(false);
-    // 语言别名兼容，强制 js 用 javascript
-    const langMap = { js: 'javascript', javascript: 'javascript' };
-    const lang = langMap[(language || '').toLowerCase()] || 'javascript';
+    // 只支持 javascript
+    const lang = 'javascript';
 
     const handleCopy = async () => {
       try {
@@ -388,12 +407,13 @@ const ChatSidebar = () => {
       }
     };
 
-    // 去除首尾多余空行和缩进
     const cleanValue = value.replace(/^\s+|\s+$/g, '');
-    // 用 highlight.js 得到高亮 HTML
     let highlighted = '';
     try {
       highlighted = hljs.highlight(cleanValue, { language: lang }).value;
+      if (!/<span class="hljs-/.test(highlighted)) {
+        highlighted = hljs.highlightAuto(cleanValue).value;
+      }
     } catch (e) {
       highlighted = cleanValue;
     }
@@ -403,9 +423,13 @@ const ChatSidebar = () => {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#23272e', padding: '8px 16px', borderTopLeftRadius: 12, borderTopRightRadius: 12 }}>
           <span style={{ color: '#b4befe', fontWeight: 600, fontSize: 14 }}>{lang}</span>
           <button 
-            style={{ border: 'none', background: 'none', color: '#b4befe', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+            style={{ border: 'none', background: 'none', color: '#b4befe', cursor: 'pointer', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}
             onClick={handleCopy}
           >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
             {copied ? '已复制' : '复制'}
           </button>
         </div>
@@ -483,7 +507,7 @@ const ChatSidebar = () => {
       '4. **返回结果**：将 `Map` 中所有值转为数组返回，即为字母异位词分组后的结果。'
   };
 
-  const [messages, setMessages] = useState([defaultDebugMessage]);
+  const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [apiKey, setApiKey] = useState('')
@@ -493,7 +517,8 @@ const ChatSidebar = () => {
   const [modelMenuDirection, setModelMenuDirection] = useState('down') // 'down' or 'up'
   const modelMenuRef = useRef(null)
   const [useCurrent, setUseCurrent] = useState(false)
-  const messagesEndRef = useRef(null)
+  // 移除 messagesEndRef 和自动滚动逻辑
+  // const messagesEndRef = useRef(null)
   const [showTooltip, setShowTooltip] = useState(null);
 
   // 豆包模型列表
@@ -509,15 +534,6 @@ const ChatSidebar = () => {
   //   { value: 'doubao-seed-1-4-lite-250615', label: '豆包种子 1.4 Lite' }
   // ]
 
-  // 自动滚动到底部
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
-
-  useEffect(() => {
-    scrollToBottom()
-  }, [messages])
-
   // 从localStorage获取API key和模型名
   useEffect(() => {
     const savedApiKey = localStorage.getItem('ai-chat-api-key')
@@ -529,6 +545,40 @@ const ChatSidebar = () => {
       setModel(savedModel)
     }
   }, [])
+
+  // 确保高亮样式在侧边栏挂载后插入
+  useEffect(() => {
+    if (injectHighlightStyleToSidebar()) return;
+    // 如果一开始没找到，监听 DOM 变化，插入后立即断开，保证性能
+    const observer = new MutationObserver(() => {
+      if (injectHighlightStyleToSidebar()) {
+        observer.disconnect();
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
+
+  // 用 ref 精确插入高亮样式（只执行一次）
+  useEffect(() => {
+    if (!sidebarRef.current) return;
+    if (!sidebarRef.current.querySelector('#hljs-theme')) {
+      const style = document.createElement('style');
+      style.id = 'hljs-theme';
+      style.innerHTML = githubDark;
+      sidebarRef.current.appendChild(style);
+    }
+  }, []);
+
+  // 移除 scrollToBottom 和相关 useEffect
+  // const scrollToBottom = () => {
+  //   if (messagesEndRef.current) {
+  //     messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+  //   }
+  // };
+  // useEffect(() => {
+  //   scrollToBottom();
+  // }, [messages]);
 
   // 关闭下拉菜单（点击外部）
   useEffect(() => {
@@ -681,9 +731,18 @@ const ChatSidebar = () => {
   }
 
   return (
-    <div style={styles.chatSidebar}>
+    <div className="ai-chat-sidebar-root" ref={sidebarRef}>
       <div style={styles.chatHeader}>
-        <h3 style={styles.headerTitle}>AI Chat</h3>
+        <h3 style={styles.headerTitle}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 8, display: 'inline-block', verticalAlign: 'middle' }}>
+            <path d="M12 2c-4.418 0-8 3.582-8 8 0 3.866 2.686 7.064 6.25 7.877V22h3.5v-4.123C17.314 17.064 20 13.866 20 10c0-4.418-3.582-8-8-8z"/>
+            <circle cx="12" cy="10" r="3"/>
+            <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+            <line x1="9" y1="9" x2="9.01" y2="9"/>
+            <line x1="15" y1="9" x2="15.01" y2="9"/>
+          </svg>
+          Yang Chat
+        </h3>
         <button 
           style={styles.closeBtn} 
           onMouseEnter={(e) => {
@@ -738,7 +797,7 @@ const ChatSidebar = () => {
           </div>
         )}
         
-        <div ref={messagesEndRef} />
+        {/* <div ref={messagesEndRef} /> */}
       </div>
 
       <div style={styles.chatInputContainer}>
