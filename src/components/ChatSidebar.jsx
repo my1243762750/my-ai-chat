@@ -60,23 +60,26 @@ const ChatSidebar = () => {
       height: '100vh',
       display: 'flex',
       flexDirection: 'column',
-      background: '#f6f8fa',
-      borderLeft: '1px solid #e0e0e0',
-      boxShadow: '-4px 0 24px 0 rgba(0,0,0,0.10)',
+      background: 'linear-gradient(180deg, #f6f8fa 80%, #ede9fe 100%)', // 底部渐变紫
+      boxShadow: '-8px 0 24px -8px #a5b4fc', // 左侧紫色阴影
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       fontSize: UNIFIED_FONT_SIZE,
-      borderTopRightRadius: '16px',
-      borderBottomRightRadius: '16px',
-      overflow: 'hidden'
+      overflow: 'hidden',
+      width: '100vw',
+      maxWidth: '100vw',
+      boxSizing: 'border-box',
+      borderRadius: 0,
+      margin: 0,
+      padding: 0,
     },
     chatHeader: {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: '18px 24px 12px 24px',
-      background: '#fff',
-      borderBottom: '1.5px solid #ececec',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+      background: 'linear-gradient(90deg, #ede9fe 0%, #fff 100%)', // 顶部横向渐变
+      borderBottom: '2px solid #a5b4fc',
+      boxShadow: '0 2px 12px rgba(99,102,241,0.06)'
     },
     headerTitle: {
       margin: 0,
@@ -86,12 +89,12 @@ const ChatSidebar = () => {
       letterSpacing: '0.5px'
     },
     closeBtn: {
-      background: '#f3f3f3',
+      background: '#ede9fe', // 浅紫
       border: 'none',
       fontSize: '22px',
-      color: '#888',
+      color: '#7c3aed', // 紫色
       cursor: 'pointer',
-      borderRadius: '6px',
+      borderRadius: '8px',
       width: '32px',
       height: '32px',
       display: 'flex',
@@ -170,9 +173,9 @@ const ChatSidebar = () => {
     },
     chatInputContainer: {
       padding: '16px 18px 18px 18px',
-      background: '#fff',
-      borderTop: '1.5px solid #ececec',
-      boxShadow: '0 -2px 8px rgba(0,0,0,0.03)',
+      background: 'linear-gradient(90deg, #f6f8fa 60%, #ede9fe 100%)',
+      borderTop: '2px solid #a5b4fc',
+      boxShadow: '0 -2px 12px rgba(99,102,241,0.06)',
       display: 'flex',
       flexDirection: 'column',
       gap: '8px',
@@ -731,7 +734,7 @@ const ChatSidebar = () => {
   }
 
   return (
-    <div className="ai-chat-sidebar-root" ref={sidebarRef}>
+    <div className="ai-chat-sidebar-root" ref={sidebarRef} style={styles.chatSidebar}>
       <div style={styles.chatHeader}>
         <h3 style={styles.headerTitle}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 8, display: 'inline-block', verticalAlign: 'middle' }}>
@@ -744,14 +747,14 @@ const ChatSidebar = () => {
           Yang Chat
         </h3>
         <button 
-          style={styles.closeBtn} 
-          onMouseEnter={(e) => {
-            e.target.style.background = '#ffeaea';
-            e.target.style.color = '#f44336';
+          style={styles.closeBtn}
+          onMouseEnter={e => {
+            e.target.style.background = '#c7d2fe'; // hover更深紫
+            e.target.style.color = '#5b21b6';
           }}
-          onMouseLeave={(e) => {
-            e.target.style.background = '#f3f3f3';
-            e.target.style.color = '#888';
+          onMouseLeave={e => {
+            e.target.style.background = '#ede9fe';
+            e.target.style.color = '#7c3aed';
           }}
           onClick={() => {
             if (window.removeSidebar) window.removeSidebar();
@@ -909,11 +912,11 @@ const ChatSidebar = () => {
             disabled={isLoading}
             rows={2}
             style={{...styles.textarea, overflowY: 'auto', minHeight: 2*24, maxHeight: 6*24}}
-            onFocus={(e) => {
-              e.target.style.border = '1.5px solid #007bff';
-              e.target.style.boxShadow = '0 0 0 2px #e3f0ff';
+            onFocus={e => {
+              e.target.style.border = '1.5px solid #7c3aed';
+              e.target.style.boxShadow = '0 0 0 2px #ede9fe';
             }}
-            onBlur={(e) => {
+            onBlur={e => {
               e.target.style.border = '1.5px solid #d0d0d0';
               e.target.style.boxShadow = '0 1px 2px rgba(0,0,0,0.03)';
             }}
