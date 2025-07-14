@@ -48,7 +48,18 @@ async function handleDoubaoAPIRequest(data, sendResponse) {
         messages: [
           {
             role: 'user',
-            content: data.message
+            content: data.image ? [
+              {
+                type: 'text',
+                text: data.message
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: data.image
+                }
+              }
+            ] : data.message
           }
         ],
         max_tokens: 1500,

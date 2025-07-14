@@ -21,6 +21,8 @@ if (typeof window !== 'undefined') {
   injectHighlightStyleToSidebar();
 }
 import ReactMarkdown from 'react-markdown';
+// 新增: 允许图片上传
+const IMAGE_MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
 const modelOptions = [
   {
@@ -65,8 +67,6 @@ const ChatSidebar = () => {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       fontSize: UNIFIED_FONT_SIZE,
       overflow: 'hidden',
-      width: '100vw',
-      maxWidth: '100vw',
       boxSizing: 'border-box',
       borderRadius: 0,
       margin: 0,
@@ -390,6 +390,54 @@ const ChatSidebar = () => {
       cursor: 'pointer',
       transition: 'background 0.2s',
       marginTop: '2px'
+    },
+    imagePreview: {
+      padding: '12px 16px',
+      borderTop: '1px solid #e5e5e5',
+      background: '#f8f9fa',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '12px',
+      position: 'relative'
+    },
+    imagePreviewImg: {
+      width: '60px',
+      height: '60px',
+      borderRadius: '8px',
+      objectFit: 'cover',
+      border: '1px solid #ddd'
+    },
+    imagePreviewActions: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '4px',
+      flex: 1
+    },
+    imagePreviewAction: {
+      background: '#7c3aed',
+      color: 'white',
+      border: 'none',
+      borderRadius: '6px',
+      padding: '4px 8px',
+      fontSize: '12px',
+      cursor: 'pointer',
+      transition: 'background 0.2s'
+    },
+    imagePreviewRemove: {
+      position: 'absolute',
+      top: '8px',
+      right: '8px',
+      background: '#ef4444',
+      color: 'white',
+      border: 'none',
+      borderRadius: '50%',
+      width: '20px',
+      height: '20px',
+      cursor: 'pointer',
+      fontSize: '12px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
     }
   }
 
@@ -449,32 +497,51 @@ const ChatSidebar = () => {
   // 用 react-markdown 渲染消息
   const renderMessage = (message) => {
     return (
-      <ReactMarkdown
-        children={message.content}
-        components={{
-          code({node, inline, className, children, ...props}) {
-            let match = /language-(\w+)/.exec(className || '');
-            // 强制 js 用 javascript
-            if (match && match[1] && match[1].toLowerCase() === 'js') match[1] = 'javascript';
-            // 代码块
-            if (!inline) {
-              return (
-                <CodeBlock
-                  language={match ? match[1] : ''}
-                  value={String(children)}
-                  onCopy={() => console.log('代码已复制')}
-                />
-              );
+      <div>
+        {/* 如果用户消息包含图片，先显示图片 */}
+        {message.type === 'user' && message.image && (
+          <img 
+            src={message.image} 
+            alt="uploaded" 
+            style={{
+              maxWidth: '220px', 
+              maxHeight: '180px', 
+              borderRadius: 12, 
+              boxShadow: '0 2px 8px rgba(99,102,241,0.10)',
+              marginBottom: '8px',
+              display: 'block'
+            }} 
+          />
+        )}
+        
+        {/* 渲染文本内容 */}
+        <ReactMarkdown
+          children={message.content}
+          components={{
+            code({node, inline, className, children, ...props}) {
+              let match = /language-(\w+)/.exec(className || '');
+              // 强制 js 用 javascript
+              if (match && match[1] && match[1].toLowerCase() === 'js') match[1] = 'javascript';
+              // 代码块
+              if (!inline) {
+                return (
+                  <CodeBlock
+                    language={match ? match[1] : ''}
+                    value={String(children)}
+                    onCopy={() => console.log('代码已复制')}
+                  />
+                );
+              }
+              // 行内代码：只加粗/变色，不用灰色背景
+              return <code style={{fontWeight: 600, color: '#e8791f', fontFamily: 'Menlo, Monaco, Consolas, monospace', background: 'none', fontSize: 14}}>{children}</code>;
+            },
+            p({children}) {
+              // 普通段落
+              return <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: '6px 0' }}>{children}</div>;
             }
-            // 行内代码：只加粗/变色，不用灰色背景
-            return <code style={{fontWeight: 600, color: '#e8791f', fontFamily: 'Menlo, Monaco, Consolas, monospace', background: 'none', fontSize: 14}}>{children}</code>;
-          },
-          p({children}) {
-            // 普通段落
-            return <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: '6px 0' }}>{children}</div>;
-          }
-        }}
-      />
+          }}
+        />
+      </div>
     );
   };
 
@@ -523,6 +590,9 @@ const ChatSidebar = () => {
   // 移除 messagesEndRef 和自动滚动逻辑
   // const messagesEndRef = useRef(null)
   const [showTooltip, setShowTooltip] = useState(null);
+  const [currentImage, setCurrentImage] = useState(null); // 当前选中的图片
+  // 图片上传 input 的 ref
+  const uploadInputRef = useRef(null);
 
   // 豆包模型列表
   // const modelOptions = [
@@ -611,7 +681,7 @@ const ChatSidebar = () => {
   }, [modelMenuOpen]);
 
   // 通过 background.js 调用豆包 API
-  const callDoubaoAPI = async (message) => {
+  const callDoubaoAPI = async (message, imageBase64 = null) => {
     if (!apiKey) {
       throw new Error('Please set your Volcengine API key')
     }
@@ -621,7 +691,8 @@ const ChatSidebar = () => {
     const params = {
       apiKey: apiKey,
       model: model,
-      message: message
+      message: message,
+      image: imageBase64 // 添加图片参数
     };
     console.log('[AIChat] 请求参数:', params);
     return new Promise((resolve, reject) => {
@@ -685,19 +756,39 @@ const ChatSidebar = () => {
 
   // 发送消息
   const sendMessage = async () => {
-    if (!inputValue.trim() || isLoading) return
+    if ((!inputValue.trim() && !currentImage) || isLoading) return
     setIsLoading(true)
-    const userMessage = inputValue.trim()
+    const originalInput = inputValue.trim()
+    const userMessage = originalInput || '请分析这张图片'
     setInputValue('')
-    setMessages(prev => [...prev, { type: 'user', content: userMessage }])
+    
+    // 构建用户消息，如果有图片则包含图片信息
+    const userMessageObj = {
+      type: 'user',
+      content: userMessage,
+      image: currentImage
+    }
+    
+    setMessages(prev => [...prev, userMessageObj])
+    
     try {
       let finalPrompt = userMessage
       if (useCurrent) {
         const pageContent = await getPageContent()
         finalPrompt = `这是当前网页的内容：\n${pageContent}\n用户问题：${userMessage}\n请基于网页内容回答。`
       }
-      const response = await callDoubaoAPI(finalPrompt)
+      
+      // 如果只有图片没有文本，使用默认提示
+      if (!originalInput && currentImage) {
+        finalPrompt = '请分析这张图片'
+      }
+      
+      // 调用API时携带图片信息
+      const response = await callDoubaoAPI(finalPrompt, currentImage)
       setMessages(prev => [...prev, { type: 'assistant', content: response }])
+      
+      // 发送完成后清除当前图片
+      setCurrentImage(null)
     } catch (error) {
       console.error('Error calling API:', error)
       setMessages(prev => [...prev, { 
@@ -708,6 +799,65 @@ const ChatSidebar = () => {
       setIsLoading(false)
     }
   }
+
+  // 新增: 图片上传处理
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('只支持图片格式');
+      return;
+    }
+    if (file.size > IMAGE_MAX_SIZE) {
+      alert('图片不能超过5MB');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      // 不直接添加到消息列表，而是设置为当前图片
+      setCurrentImage(event.target.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // 快捷操作：解释图片
+  const handleExplainImage = async () => {
+    if (!currentImage || isLoading) return;
+    
+    setIsLoading(true);
+    const userMessage = '解释这张图片';
+    
+    // 构建用户消息，包含图片信息
+    const userMessageObj = {
+      type: 'user',
+      content: userMessage,
+      image: currentImage
+    };
+    
+    setMessages(prev => [...prev, userMessageObj]);
+    
+    try {
+      // 调用API时携带图片信息
+      const response = await callDoubaoAPI(userMessage, currentImage);
+      setMessages(prev => [...prev, { type: 'assistant', content: response }]);
+      
+      // 发送完成后清除当前图片
+      setCurrentImage(null);
+    } catch (error) {
+      console.error('Error calling API:', error);
+      setMessages(prev => [...prev, { 
+        type: 'assistant', 
+        content: error.message || 'Sorry, there was an error processing your request.' 
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 移除当前图片
+  const handleRemoveImage = () => {
+    setCurrentImage(null);
+  };
 
   // 处理回车键
   const handleKeyPress = (e) => {
@@ -805,6 +955,23 @@ const ChatSidebar = () => {
 
       <div style={styles.chatInputContainer}>
         <div style={styles.inputActionsRow}>
+          {/* 图片上传按钮 */}
+          <div style={{position: 'relative'}}>
+            <input type="file" accept="image/*" ref={uploadInputRef} style={{display: 'none'}} onChange={handleImageUpload} />
+            <button
+              style={styles.iconBtn}
+              onClick={() => uploadInputRef.current && uploadInputRef.current.click()}
+              aria-label="上传图片"
+              onMouseEnter={e => setShowTooltip('uploadimg')}
+              onMouseLeave={e => setShowTooltip(null)}
+            >
+              {/* 图片上传SVG */}
+              <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+            </button>
+            {showTooltip === 'uploadimg' && (
+              <div style={styles.tooltip}>上传图片</div>
+            )}
+          </div>
           {/* Current 网页内容按钮 */}
           <div style={{position: 'relative'}}>
             <button
@@ -899,6 +1066,31 @@ const ChatSidebar = () => {
             )}
           </div>
         </div>
+        
+        {/* 图片预览区域 */}
+        {currentImage && (
+          <div style={styles.imagePreview}>
+            <img src={currentImage} alt="预览" style={styles.imagePreviewImg} />
+            <div style={styles.imagePreviewActions}>
+              <button 
+                style={styles.imagePreviewAction}
+                onClick={handleExplainImage}
+                onMouseEnter={e => e.target.style.background = '#6d28d9'}
+                onMouseLeave={e => e.target.style.background = '#7c3aed'}
+              >
+                → 解释图片
+              </button>
+            </div>
+            <button 
+              style={styles.imagePreviewRemove}
+              onClick={handleRemoveImage}
+              title="移除图片"
+            >
+              ×
+            </button>
+          </div>
+        )}
+        
         <div style={styles.inputRow}>
           <textarea
             value={inputValue}
@@ -923,13 +1115,13 @@ const ChatSidebar = () => {
           />
           <button 
             onClick={sendMessage}
-            disabled={!inputValue.trim() || isLoading}
+            disabled={(!inputValue.trim() && !currentImage) || isLoading}
             className="send-btn-icon"
             aria-label="发送"
             style={{
               ...styles.sendBtnFloating,
-              ...(inputValue.trim() && !isLoading ? styles.sendBtnFloatingActive : {}),
-              ...((!inputValue.trim() || isLoading) ? styles.sendBtnFloatingDisabled : {} )
+              ...((inputValue.trim() || currentImage) && !isLoading ? styles.sendBtnFloatingActive : {}),
+              ...((!inputValue.trim() && !currentImage) || isLoading ? styles.sendBtnFloatingDisabled : {} )
             }}
           >
             <svg
@@ -937,8 +1129,8 @@ const ChatSidebar = () => {
               className="send-icon-img"
               width="20" // 更小
               height="20"
-              fill={(!inputValue.trim() || isLoading) ? '#b3b8e0' : (inputValue.trim() ? '#6366f1' : '#222')}
-              stroke={(!inputValue.trim() || isLoading) ? '#b3b8e0' : (inputValue.trim() ? '#6366f1' : '#222')}
+              fill={(!inputValue.trim() && !currentImage) || isLoading ? '#b3b8e0' : '#6366f1'}
+              stroke={(!inputValue.trim() && !currentImage) || isLoading ? '#b3b8e0' : '#6366f1'}
               strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
